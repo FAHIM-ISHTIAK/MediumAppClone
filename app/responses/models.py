@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from sqlalchemy import ForeignKey, Integer, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,6 +20,12 @@ class Response(TimestampMixin, Base):
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("responses.id", ondelete="CASCADE"),
+        nullable=True,
+        default=None,
     )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     likes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
