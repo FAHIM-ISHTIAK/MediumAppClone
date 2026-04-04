@@ -161,7 +161,8 @@ export default function Home() {
       <Sidebar />
 
       <div className="ml-64 flex">
-        <main className="flex-1 max-w-3xl px-12 py-8">
+        <div className="flex-1 min-w-0">
+          <main className="max-w-3xl mx-auto px-12 py-8">
           {/* Search Bar */}
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
@@ -331,10 +332,11 @@ export default function Home() {
               ))}
             </div>
           )}
-        </main>
+          </main>
+        </div>
 
         {/* Authors Sidebar */}
-        <aside className="w-80 border-l border-gray-200 p-8 sticky top-0 h-screen overflow-y-auto">
+        <aside className="w-72 shrink-0 border-l border-gray-200 p-6 sticky top-0 h-screen overflow-y-auto">
           <h3 className="font-medium mb-4">Suggested Authors</h3>
           <div className="divide-y divide-gray-100">
             {authors.map((author) => (

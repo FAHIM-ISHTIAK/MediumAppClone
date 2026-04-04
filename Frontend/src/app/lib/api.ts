@@ -4,6 +4,8 @@
  * All response types match the backend's camelCase pydantic serialization.
  */
 
+import { queryCache } from './queryCache';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -68,15 +70,6 @@ export interface AuthorProfile {
   following: number;
   articles: number;
   isFollowing: boolean;
-}
-
-export interface PublicationProfile {
-  id: string;
-  name: string;
-  description: string | null;
-  avatar: string | null;
-  followers: number;
-  articlesCount: number;
 }
 
 export interface ResponseItem {
@@ -204,6 +197,21 @@ export class ApiClient {
     return h;
   }
 
+  /**
+   * Return the cache TTL in milliseconds for a given HTTP method + path, or
+   * `null` if the response should not be cached.
+   *
+   * Only cacheable (read-only, non-personalised) resources:
+   *   /user/{id}/articles  → article feed        30 s
+   *   /search              → search results     120 s
+   */
+  private _getCacheTtlMs(method: string, path: string): number | null {
+    if (method !== 'GET') return null;
+    if (/^\/user\/[^/]+\/articles/.test(path))           return 30_000;
+    if (path.startsWith('/search'))                       return 120_000;
+    return null;
+  }
+
   private async request<T>(
     method: string,
     path: string,
@@ -219,6 +227,13 @@ export class ApiClient {
       }
       const qsStr = qs.toString();
       if (qsStr) url += `?${qsStr}`;
+    }
+
+    // ── Client-side cache check ───────────────────────────────────────────
+    const cacheTtl = this._getCacheTtlMs(method, path);
+    if (cacheTtl !== null) {
+      const hit = queryCache.get<T>(url);
+      if (hit !== null) return hit;
     }
 
     const doFetch = async (tokenOverride?: string | null) => {
@@ -248,7 +263,14 @@ export class ApiClient {
       throw new Error(err.detail || `API error ${res.status}`);
     }
 
-    return res.json();
+    const data: T = await res.json();
+
+    // ── Populate cache ────────────────────────────────────────────────────
+    if (cacheTtl !== null) {
+      queryCache.set<T>(url, data, cacheTtl);
+    }
+
+    return data;
   }
 
   // ── Auth ──────────────────────────────────────────────────────────────────

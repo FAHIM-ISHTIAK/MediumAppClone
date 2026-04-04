@@ -6,6 +6,7 @@ from app.articles.service import build_article_summaries
 from app.auth.models import User
 from app.authors.schemas import Author
 from app.authors.service import _author_counts
+from app.common.cache import cache_store
 from app.common.pagination import PaginationMeta
 from app.publications.models import Publication
 from app.publications.schemas import Publication as PublicationSchema
@@ -14,6 +15,11 @@ from app.search.schemas import SearchResponse, SearchSection
 
 
 async def search(db: AsyncSession, q: str, type_: str | None, page: int, limit: int) -> SearchResponse:
+    cache_key = f"search:{q.strip().lower()}:{type_ or 'all'}:{page}:{limit}"
+    cached = cache_store.get(cache_key)
+    if cached is not None:
+        return cached
+
     pattern = f"%{q.strip()}%"
     pagination = PaginationMeta(page=page, limit=limit, total_items=0, total_pages=0)
     response = SearchResponse(pagination=pagination)
@@ -86,4 +92,5 @@ async def search(db: AsyncSession, q: str, type_: str | None, page: int, limit: 
     response.pagination.total_pages = (
         (response.pagination.total_items + limit - 1) // limit if response.pagination.total_items else 0
     )
+    cache_store.set(cache_key, response, ttl=120)
     return response
