@@ -31,10 +31,7 @@ export default function ArticleReader() {
   const [selectedText, setSelectedText] = useState('');
   const [highlightPosition, setHighlightPosition] = useState({ x: 0, y: 0 });
   const [showInlineComment, setShowInlineComment] = useState(false);
-<<<<<<< HEAD
-=======
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState(0);
->>>>>>> main
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [savingHighlight, setSavingHighlight] = useState(false);
   const [savingArticle, setSavingArticle] = useState(false);
@@ -326,8 +323,6 @@ export default function ArticleReader() {
   );
 
   const handleInlineComment = () => {
-<<<<<<< HEAD
-=======
     // Compute paragraph index from current selection
     const selection = window.getSelection();
     let pIdx = 0;
@@ -343,7 +338,6 @@ export default function ArticleReader() {
       }
     }
     setSelectedParagraphIndex(pIdx);
->>>>>>> main
     setShowInlineComment(true);
     setShowHighlightMenu(false);
   };
@@ -630,10 +624,7 @@ export default function ArticleReader() {
             <InlineCommentPopup
               articleId={article.id}
               selectedText={selectedText}
-<<<<<<< HEAD
-=======
               paragraphIndex={selectedParagraphIndex}
->>>>>>> main
               onClose={() => setShowInlineComment(false)}
               onCreated={handleInlineCommentCreated}
               position={highlightPosition}

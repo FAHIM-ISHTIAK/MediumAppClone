@@ -2,28 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useApp } from '../context/AppContext';
 import Sidebar from '../components/Sidebar';
-<<<<<<< HEAD
-import { Clock, Bookmark, Highlighter, MessageCircle, Trash2, BarChart3 } from 'lucide-react';
-import {
-  ArticleSummary,
-  HighlightItem,
-=======
 import { Clock, Bookmark, Highlighter, MessageCircle, MessageSquareText, Trash2, BarChart3 } from 'lucide-react';
 import {
   ArticleSummary,
   HighlightItem,
   InlineResponseItem,
->>>>>>> main
   ReadingHistoryEntry,
   ResponseItem,
   ReadingAnalytics,
 } from '../lib/api';
 
-<<<<<<< HEAD
-type LibraryTab = 'saved' | 'highlights' | 'history' | 'responses' | 'analytics';
-=======
 type LibraryTab = 'saved' | 'highlights' | 'history' | 'responses' | 'inline-responses' | 'analytics';
->>>>>>> main
 
 export default function Library() {
   const { api, user, loading: authLoading } = useApp();
@@ -33,10 +22,7 @@ export default function Library() {
   const [highlights, setHighlights] = useState<HighlightItem[]>([]);
   const [history, setHistory] = useState<ReadingHistoryEntry[]>([]);
   const [responses, setResponses] = useState<ResponseItem[]>([]);
-<<<<<<< HEAD
-=======
   const [inlineResponses, setInlineResponses] = useState<InlineResponseItem[]>([]);
->>>>>>> main
   const [analytics, setAnalytics] = useState<ReadingAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,13 +48,10 @@ export default function Library() {
         const res = await api.getUserResponses(user.id);
         setResponses(res.data);
       },
-<<<<<<< HEAD
-=======
       'inline-responses': async () => {
         const res = await api.getUserInlineResponses(user.id);
         setInlineResponses(res.data);
       },
->>>>>>> main
       analytics: async () => {
         const res = await api.getReadingAnalytics(user.id);
         setAnalytics(res);
@@ -107,10 +90,7 @@ export default function Library() {
     { id: 'highlights' as LibraryTab, label: 'Highlights', icon: Highlighter },
     { id: 'history' as LibraryTab, label: 'Reading History', icon: Clock },
     { id: 'responses' as LibraryTab, label: 'Responses', icon: MessageCircle },
-<<<<<<< HEAD
-=======
     { id: 'inline-responses' as LibraryTab, label: 'Inline Responses', icon: MessageSquareText },
->>>>>>> main
     { id: 'analytics' as LibraryTab, label: 'Analytics', icon: BarChart3 },
   ];
 
@@ -351,8 +331,6 @@ export default function Library() {
                 </div>
               )}
 
-<<<<<<< HEAD
-=======
               {/* Inline Responses */}
               {activeTab === 'inline-responses' && (
                 <div>
@@ -384,7 +362,6 @@ export default function Library() {
                 </div>
               )}
 
->>>>>>> main
               {/* Analytics */}
               {activeTab === 'analytics' && analytics && (
                 <div className="space-y-8">

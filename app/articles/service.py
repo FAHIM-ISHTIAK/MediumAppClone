@@ -104,15 +104,15 @@ async def build_article_summaries(
 
 async def build_article_detail(db: AsyncSession, article: Article) -> ArticleSchema:
     user_map = await _get_users_map(db, [article.author_id])
-    author = user_map.get(article.author_id)
-    if author is None:
-        raise not_found("Article author not found.")
     publication_map = await _get_publications_map(
         db,
         [article.publication_id] if article.publication_id else [],
     )
-    publication = publication_map.get(article.publication_id) if article.publication_id else None
     tag_map = await _get_tags_map(db, [article.id])
+    author = user_map.get(article.author_id)
+    if author is None:
+        raise not_found("Article author not found.")
+    publication = publication_map.get(article.publication_id) if article.publication_id else None
     return ArticleSchema(
         id=article.id,
         title=article.title,

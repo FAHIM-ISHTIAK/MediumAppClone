@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-import { InlineComment } from '../context/AppContext';
-import { X } from 'lucide-react';
-
-interface InlineCommentViewerProps {
-  comment: InlineComment;
-=======
 import { InlineResponseItem } from '../lib/api';
 import { X } from 'lucide-react';
 
 interface InlineCommentViewerProps {
   comment: InlineResponseItem;
->>>>>>> main
   onClose: () => void;
   position: { x: number; y: number };
 }
@@ -30,23 +22,6 @@ export default function InlineCommentViewer({
       }}
     >
       <div className="flex items-start justify-between mb-3">
-<<<<<<< HEAD
-        <div className="flex items-center gap-2">
-          <img
-            src={comment.author.avatar}
-            alt={comment.author.name}
-            className="size-8 rounded-full"
-          />
-          <div>
-            <p className="font-medium text-sm">{comment.author.name}</p>
-            <p className="text-xs text-gray-500">
-              {new Date(comment.createdAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })}
-            </p>
-          </div>
-=======
         <div>
           <p className="text-xs text-gray-500">
             {new Date(comment.date).toLocaleDateString('en-US', {
@@ -54,7 +29,6 @@ export default function InlineCommentViewer({
               day: 'numeric',
             })}
           </p>
->>>>>>> main
         </div>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
           <X className="size-4" />
@@ -62,11 +36,7 @@ export default function InlineCommentViewer({
       </div>
 
       <p className="text-sm bg-yellow-50 border-l-2 border-yellow-400 pl-2 py-1 mb-3 italic text-gray-600">
-<<<<<<< HEAD
-        "{comment.highlightedText}"
-=======
         "{comment.selectedText}"
->>>>>>> main
       </p>
 
       <p className="text-sm text-gray-800">{comment.text}</p>

@@ -153,14 +153,11 @@ async def list_reading_history(
         limit,
     )
     article_ids = [entry.article_id for entry in entries]
-    article_map = {}
-    if article_ids:
-        article_map = {
-            article.id: article
-            for article in (await db.scalars(select(Article).where(Article.id.in_(article_ids)))).all()
-        }
+    article_map: dict[uuid.UUID, Article] = {}
     tag_map: dict[uuid.UUID, list[str]] = defaultdict(list)
     if article_ids:
+        articles_result = await db.scalars(select(Article).where(Article.id.in_(article_ids)))
+        article_map = {article.id: article for article in articles_result.all()}
         tag_rows = await db.execute(
             select(ArticleTag.article_id, Tag.name)
             .join(Tag, Tag.id == ArticleTag.tag_id)
