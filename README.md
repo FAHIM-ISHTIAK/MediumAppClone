@@ -12,14 +12,22 @@ A Medium-style full-stack app with:
 
 ```text
 .
-├── app/                # FastAPI app
-├── alembic/            # Database migrations
-├── tests/              # Backend test suite
-├── Frontend/           # Vite + React frontend
-├── seed.py             # Seed script for sample data
-├── requirements.txt    # Backend dependencies
-├── Dockerfile          # Backend container image
-└── render.yaml         # Render deployment config
+├── Backend/
+│   ├── app/              # FastAPI application
+│   ├── alembic/          # Database migrations
+│   ├── tests/            # Backend test suite
+│   ├── alembic.ini       # Alembic config
+│   ├── pytest.ini        # Pytest config
+│   ├── requirements.txt  # Backend dependencies
+│   ├── Dockerfile        # Backend container image
+│   ├── render.yaml       # Render deployment config
+│   └── seed.py           # Seed script for sample data
+├── Frontend/
+│   ├── src/              # React + Vite source
+│   ├── package.json      # Frontend dependencies
+│   ├── vite.config.ts    # Vite config
+│   └── netlify.toml      # Netlify deployment config
+└── README.md
 ```
 
 ## Tech stack
@@ -45,9 +53,12 @@ Backend data can run entirely on local SQLite. Authentication still depends on S
 
 ## Backend setup
 
+All backend commands should be run from the `Backend/` directory.
+
 ### 1. Create and activate a virtual environment
 
 ```bash
+cd Backend
 python3.11 -m venv .venv
 source .venv/bin/activate
 ```
@@ -57,6 +68,7 @@ If `python3.11` is not available, use your local Python 3.11 binary.
 ### 2. Install dependencies
 
 ```bash
+cd Backend
 pip install -r requirements.txt
 ```
 
@@ -65,6 +77,7 @@ pip install -r requirements.txt
 Copy the example file:
 
 ```bash
+cd Backend
 cp .env.example .env
 ```
 
@@ -90,12 +103,14 @@ Important notes:
 Run this for Postgres or SQLite before starting the app:
 
 ```bash
+cd Backend
 alembic upgrade head
 ```
 
 ### 5. Start the backend server
 
 ```bash
+cd Backend
 uvicorn app.main:app --reload
 ```
 
@@ -117,6 +132,7 @@ npm install
 ### 2. Configure frontend environment variables
 
 ```bash
+cd Frontend
 cp .env.example .env
 ```
 
@@ -131,6 +147,7 @@ Frontend env vars:
 ### 3. Start the frontend
 
 ```bash
+cd Frontend
 npm run dev
 ```
 
@@ -147,6 +164,7 @@ http://localhost:5173
 Use SQLite and skip Supabase database setup:
 
 ```bash
+cd Backend
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -160,18 +178,18 @@ This is enough for local API work and backend development.
 
 If you want Google login and authenticated frontend flows:
 
-1. Set backend `SUPABASE_URL` and `SUPABASE_JWT_SECRET`.
-2. Set frontend `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-3. Keep `FRONTEND_URL=http://localhost:5173`.
+1. Set backend `SUPABASE_URL` and `SUPABASE_JWT_SECRET` in `Backend/.env`.
+2. Set frontend `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `Frontend/.env`.
+3. Keep `FRONTEND_URL=http://localhost:5173` in `Backend/.env`.
 4. Start backend and frontend.
 
 ### Supabase/Postgres backend flow
 
 If you want the backend to use Supabase Postgres instead of SQLite:
 
-1. Put your Supabase connection string in `DATABASE_URL`.
+1. Put your Supabase connection string in `DATABASE_URL` in `Backend/.env`.
 2. Optionally set `DATABASE_DIRECT_URL`.
-3. Run `alembic upgrade head`.
+3. Run `cd Backend && alembic upgrade head`.
 4. Start the backend.
 
 The config automatically handles Supabase pooler modes:
@@ -186,6 +204,7 @@ The config automatically handles Supabase pooler modes:
 After migrations, populate the database with sample users, articles, publications, responses, highlights, and library activity:
 
 ```bash
+cd Backend
 python seed.py
 ```
 
@@ -198,18 +217,21 @@ The test suite uses an in-memory SQLite database and does not require your real 
 Run all tests:
 
 ```bash
+cd Backend
 pytest
 ```
 
 Run a specific file:
 
 ```bash
+cd Backend
 pytest tests/test_config.py
 ```
 
 Run with verbose output:
 
 ```bash
+cd Backend
 pytest -v
 ```
 
@@ -225,6 +247,7 @@ pytest -v
 ### Backend
 
 ```bash
+cd Backend
 source .venv/bin/activate
 uvicorn app.main:app --reload
 alembic upgrade head
@@ -247,13 +270,13 @@ npm run preview
 Build the backend image:
 
 ```bash
-docker build -t medium-clone-api .
+docker build -t medium-clone-api Backend/
 ```
 
 Run it:
 
 ```bash
-docker run --rm -p 8000:8000 --env-file .env medium-clone-api
+docker run --rm -p 8000:8000 --env-file Backend/.env medium-clone-api
 ```
 
 ## Deployment
@@ -267,7 +290,7 @@ This repo is ready for:
 
 1. Push your latest code to GitHub.
 2. In Render, click **New +** → **Blueprint**.
-3. Connect your repo and deploy using `render.yaml`.
+3. Connect your repo and deploy using `Backend/render.yaml`.
 4. In Render service environment variables, set:
 
 | Variable | Required | Notes |
@@ -359,14 +382,14 @@ This pattern allows both:
 
 Usually caused by missing:
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- backend `SUPABASE_URL`
-- backend `SUPABASE_JWT_SECRET`
+- `VITE_SUPABASE_URL` in `Frontend/.env`
+- `VITE_SUPABASE_ANON_KEY` in `Frontend/.env`
+- `SUPABASE_URL` in `Backend/.env`
+- `SUPABASE_JWT_SECRET` in `Backend/.env`
 
 ### CORS errors
 
-Set `FRONTEND_URL` in the backend `.env` to include your frontend origin, for example:
+Set `FRONTEND_URL` in `Backend/.env` to include your frontend origin, for example:
 
 ```env
 FRONTEND_URL=http://localhost:5173,http://localhost:3000
@@ -380,7 +403,7 @@ FRONTEND_ORIGIN_REGEX=^https:\/\/(.*--)?your-site-name\.netlify\.app$
 
 ### Database connection problems with Supabase
 
-Check:
+Check in `Backend/.env`:
 
 - `DATABASE_URL`
 - `DATABASE_DIRECT_URL`
