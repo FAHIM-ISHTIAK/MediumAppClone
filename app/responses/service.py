@@ -176,13 +176,15 @@ async def list_inline_responses(
     article_id: uuid.UUID,
     page: int,
     limit: int,
+    user_id: uuid.UUID | None = None,
 ) -> InlineResponseListResponse:
     await _get_article(db, article_id)
+    stmt = select(InlineResponse).where(InlineResponse.article_id == article_id)
+    if user_id is not None:
+        stmt = stmt.where(InlineResponse.user_id == user_id)
     responses, pagination = await paginate_scalars(
         db,
-        select(InlineResponse)
-        .where(InlineResponse.article_id == article_id)
-        .order_by(InlineResponse.created_at.desc()),
+        stmt.order_by(InlineResponse.created_at.desc()),
         page,
         limit,
     )

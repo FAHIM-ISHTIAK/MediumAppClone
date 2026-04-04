@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.models import User
 from app.common.exceptions import forbidden
 from app.common.pagination import PaginationParams
-from app.dependencies import ensure_user_access, get_current_user, get_db
+from app.dependencies import ensure_user_access, get_current_user, get_optional_user, get_db
 from app.responses.schemas import (
     ResponseClapRequest,
     InlineResponseCreateRequest,
@@ -122,10 +122,12 @@ async def list_inline_responses_endpoint(
     article_id: uuid.UUID,
     pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> InlineResponseListResponse:
     return await list_inline_responses(
         db,
         article_id=article_id,
+        user_id=current_user.id if current_user else None,
         page=pagination.page,
         limit=pagination.limit,
     )

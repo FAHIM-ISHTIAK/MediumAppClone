@@ -351,6 +351,7 @@ export class ApiClient {
 
   getInlineResponses(articleId: string, page = 1, limit = 50): Promise<Paginated<InlineResponseItem>> {
     return this.request('GET', `/articles/${articleId}/inline-responses`, {
+      auth: true,
       params: { page, limit },
     });
   }
@@ -450,6 +451,13 @@ export class ApiClient {
 
   getUserResponses(userId: string, page = 1, limit = 20): Promise<Paginated<ResponseItem>> {
     return this.request('GET', `/users/${userId}/library/responses`, {
+      auth: true,
+      params: { page, limit },
+    });
+  }
+
+  getUserInlineResponses(userId: string, page = 1, limit = 50): Promise<Paginated<InlineResponseItem>> {
+    return this.request('GET', `/users/${userId}/library/inline-responses`, {
       auth: true,
       params: { page, limit },
     });

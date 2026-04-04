@@ -2,16 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useApp } from '../context/AppContext';
 import Sidebar from '../components/Sidebar';
-import { Clock, Bookmark, Highlighter, MessageCircle, Trash2, BarChart3 } from 'lucide-react';
+import { Clock, Bookmark, Highlighter, MessageCircle, MessageSquareText, Trash2, BarChart3 } from 'lucide-react';
 import {
   ArticleSummary,
   HighlightItem,
+  InlineResponseItem,
   ReadingHistoryEntry,
   ResponseItem,
   ReadingAnalytics,
 } from '../lib/api';
 
-type LibraryTab = 'saved' | 'highlights' | 'history' | 'responses' | 'analytics';
+type LibraryTab = 'saved' | 'highlights' | 'history' | 'responses' | 'inline-responses' | 'analytics';
 
 export default function Library() {
   const { api, user, loading: authLoading } = useApp();
@@ -21,6 +22,7 @@ export default function Library() {
   const [highlights, setHighlights] = useState<HighlightItem[]>([]);
   const [history, setHistory] = useState<ReadingHistoryEntry[]>([]);
   const [responses, setResponses] = useState<ResponseItem[]>([]);
+  const [inlineResponses, setInlineResponses] = useState<InlineResponseItem[]>([]);
   const [analytics, setAnalytics] = useState<ReadingAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +47,10 @@ export default function Library() {
       responses: async () => {
         const res = await api.getUserResponses(user.id);
         setResponses(res.data);
+      },
+      'inline-responses': async () => {
+        const res = await api.getUserInlineResponses(user.id);
+        setInlineResponses(res.data);
       },
       analytics: async () => {
         const res = await api.getReadingAnalytics(user.id);
@@ -84,6 +90,7 @@ export default function Library() {
     { id: 'highlights' as LibraryTab, label: 'Highlights', icon: Highlighter },
     { id: 'history' as LibraryTab, label: 'Reading History', icon: Clock },
     { id: 'responses' as LibraryTab, label: 'Responses', icon: MessageCircle },
+    { id: 'inline-responses' as LibraryTab, label: 'Inline Responses', icon: MessageSquareText },
     { id: 'analytics' as LibraryTab, label: 'Analytics', icon: BarChart3 },
   ];
 
@@ -316,6 +323,37 @@ export default function Library() {
                             <span>{comment.date}</span>
                             <span>·</span>
                             <span>👏 {comment.likes}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Inline Responses */}
+              {activeTab === 'inline-responses' && (
+                <div>
+                  {inlineResponses.length === 0 ? (
+                    <EmptyState icon={MessageSquareText} message="No inline responses yet" sub="Your inline comments on articles will appear here" />
+                  ) : (
+                    <div className="space-y-4">
+                      {inlineResponses.map((ir) => (
+                        <div key={ir.id} className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                          <Link
+                            to={`/article/${ir.articleId}`}
+                            className="text-sm font-medium text-gray-900 hover:underline mb-2 block"
+                          >
+                            View article →
+                          </Link>
+                          <p className="text-sm bg-yellow-50 border-l-2 border-yellow-400 pl-3 py-2 mb-2 italic text-gray-600">
+                            "{ir.selectedText}"
+                          </p>
+                          <p className="text-gray-800 mb-2">{ir.text}</p>
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <span>{ir.date}</span>
+                            <span>·</span>
+                            <span>👏 {ir.likes}</span>
                           </div>
                         </div>
                       ))}

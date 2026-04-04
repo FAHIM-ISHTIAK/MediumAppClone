@@ -3,6 +3,7 @@
 venv/
 env/
 .env
+Frontend/.env
 .venv/
 __pycache__/
 *.log

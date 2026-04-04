@@ -6,6 +6,7 @@ import { InlineResponseItem } from '../lib/api';
 interface InlineCommentPopupProps {
   articleId: string;
   selectedText: string;
+  paragraphIndex: number;
   position: { x: number; y: number };
   onClose: () => void;
   onCreated?: (comment: InlineResponseItem) => void;
@@ -14,6 +15,7 @@ interface InlineCommentPopupProps {
 export default function InlineCommentPopup({
   articleId,
   selectedText,
+  paragraphIndex,
   position,
   onClose,
   onCreated,
@@ -30,7 +32,7 @@ export default function InlineCommentPopup({
     try {
       const result = await api.createInlineResponse(articleId, user.id, {
         selectedText,
-        paragraphIndex: 0, // simplified — could be computed from DOM position
+        paragraphIndex,
         text: comment.trim(),
       });
       onCreated?.(result);
