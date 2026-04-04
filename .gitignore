@@ -6,3 +6,6 @@ env/
 .venv/
 __pycache__/
 *.log
+Frontend/node_modules/
+Frontend/dist/
+Frontend/package-lock.json
