@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Integer, Text, Uuid
+from sqlalchemy import Boolean, ForeignKey, Integer, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base, TimestampMixin
@@ -29,6 +29,7 @@ class Response(TimestampMixin, Base):
     )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     likes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    is_edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class InlineResponse(TimestampMixin, Base):

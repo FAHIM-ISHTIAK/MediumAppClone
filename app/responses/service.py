@@ -50,6 +50,32 @@ async def _get_article(db: AsyncSession, article_id: uuid.UUID) -> Article:
     return article
 
 
+async def _count_descendants(db: AsyncSession, response_id: uuid.UUID) -> int:
+    """Recursively count all nested replies under a response."""
+    children = (
+        await db.scalars(
+            select(Response).where(Response.parent_id == response_id)
+        )
+    ).all()
+    count = len(children)
+    for child in children:
+        count += await _count_descendants(db, child.id)
+    return count
+
+
+async def _get_total_response_count(db: AsyncSession, article_id: uuid.UUID) -> int:
+    """Get total count of all responses (top-level + all nested replies)."""
+    responses = (
+        await db.scalars(
+            select(Response).where(Response.article_id == article_id, Response.parent_id.is_(None))
+        )
+    ).all()
+    total = len(responses)
+    for response in responses:
+        total += await _count_descendants(db, response.id)
+    return total
+
+
 async def list_responses(
     db: AsyncSession,
     article_id: uuid.UUID,
@@ -66,18 +92,11 @@ async def list_responses(
         page,
         limit,
     )
-    # Count replies per top-level response
-    response_ids = [r.id for r in responses]
+    
+    # Recursively count all descendants for each response
     reply_counts: dict[uuid.UUID, int] = {}
-    if response_ids:
-        rows = (
-            await db.execute(
-                select(Response.parent_id, func.count())
-                .where(Response.parent_id.in_(response_ids))
-                .group_by(Response.parent_id)
-            )
-        ).all()
-        reply_counts = {row[0]: row[1] for row in rows}
+    for response in responses:
+        reply_counts[response.id] = await _count_descendants(db, response.id)
 
     authors = await _get_response_authors_map(db, [response.user_id for response in responses])
 
@@ -97,10 +116,12 @@ async def list_responses(
                 author=_author_payload(author),
                 parent_id=response.parent_id,
                 reply_count=reply_counts.get(response.id, 0),
+                is_edited=response.is_edited,
             )
         )
 
-    return ResponseListResponse(data=data, pagination=pagination)
+    total_count = await _get_total_response_count(db, article_id)
+    return ResponseListResponse(data=data, pagination=pagination, total_response_count=total_count)
 
 
 async def create_response(
@@ -126,6 +147,7 @@ async def create_response(
         author=_author_payload(author),
         parent_id=None,
         reply_count=0,
+        is_edited=response.is_edited,
     )
 
 
@@ -156,6 +178,7 @@ async def create_reply(
         author=_author_payload(author),
         parent_id=response.parent_id,
         reply_count=0,
+        is_edited=response.is_edited,
     )
 
 
@@ -179,18 +202,10 @@ async def list_replies(
         page,
         limit,
     )
-    # Count nested replies for each reply
-    response_ids = [r.id for r in responses]
+    # Recursively count all descendants for each reply
     reply_counts: dict[uuid.UUID, int] = {}
-    if response_ids:
-        rows = (
-            await db.execute(
-                select(Response.parent_id, func.count())
-                .where(Response.parent_id.in_(response_ids))
-                .group_by(Response.parent_id)
-            )
-        ).all()
-        reply_counts = {row[0]: row[1] for row in rows}
+    for response in responses:
+        reply_counts[response.id] = await _count_descendants(db, response.id)
 
     authors = await _get_response_authors_map(db, [r.user_id for r in responses])
     data: list[ResponseItem] = []
@@ -209,6 +224,7 @@ async def list_replies(
                 author=_author_payload(author),
                 parent_id=response.parent_id,
                 reply_count=reply_counts.get(response.id, 0),
+                is_edited=response.is_edited,
             )
         )
     return ResponseListResponse(data=data, pagination=pagination)
@@ -228,14 +244,11 @@ async def update_response(
     if response.user_id != user_id:
         raise forbidden("Only the response owner can update this response.")
     response.text = text
+    response.is_edited = True
     await db.commit()
     await db.refresh(response)
     author = await _get_response_author(db, response.user_id)
-    reply_count = (
-        await db.scalar(
-            select(func.count()).select_from(Response).where(Response.parent_id == response.id)
-        )
-    ) or 0
+    reply_count = await _count_descendants(db, response.id)
     return ResponseItem(
         id=response.id,
         article_id=response.article_id,
@@ -246,6 +259,7 @@ async def update_response(
         author=_author_payload(author),
         parent_id=response.parent_id,
         reply_count=reply_count,
+        is_edited=response.is_edited,
     )
 
 

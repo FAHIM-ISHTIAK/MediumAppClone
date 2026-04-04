@@ -80,6 +80,7 @@ export interface ResponseItem {
   author: ArticleAuthor;
   parentId: string | null;
   replyCount: number;
+  isEdited: boolean;
 }
 
 export interface InlineResponseItem {
@@ -172,6 +173,8 @@ export interface SaveResponse {
 export interface Paginated<T> {
   data: T[];
   pagination: PaginationMeta;
+  totalResponseCount?: number;
+  total_response_count?: number;
 }
 
 // ─── API Client ──────────────────────────────────────────────────────────────
@@ -339,6 +342,13 @@ export class ApiClient {
   deleteResponse(articleId: string, userId: string, responseId: string): Promise<void> {
     return this.request('DELETE', `/articles/${articleId}/responses/${userId}/${responseId}`, {
       auth: true,
+    });
+  }
+
+  updateResponse(articleId: string, userId: string, responseId: string, text: string): Promise<ResponseItem> {
+    return this.request('PUT', `/articles/${articleId}/responses/${userId}/${responseId}`, {
+      auth: true,
+      body: { userId, text },
     });
   }
 

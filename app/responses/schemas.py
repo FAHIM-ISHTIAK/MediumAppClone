@@ -19,11 +19,13 @@ class ResponseItem(APIModel):
     author: ArticleAuthor
     parent_id: Optional[uuid.UUID] = None
     reply_count: int = 0
+    is_edited: bool = False
 
 
 class ResponseListResponse(APIModel):
     data: list[ResponseItem]
     pagination: PaginationMeta
+    total_response_count: int = 0
 
 
 class ResponseClapResponse(APIModel):
