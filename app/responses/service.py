@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.articles.models import Article
@@ -57,12 +57,28 @@ async def list_responses(
     limit: int,
 ) -> ResponseListResponse:
     article = await _get_article(db, article_id)
+    # Only fetch top-level responses (no parent)
     responses, pagination = await paginate_scalars(
         db,
-        select(Response).where(Response.article_id == article_id).order_by(Response.created_at.desc()),
+        select(Response)
+        .where(Response.article_id == article_id, Response.parent_id.is_(None))
+        .order_by(Response.created_at.desc()),
         page,
         limit,
     )
+    # Count replies per top-level response
+    response_ids = [r.id for r in responses]
+    reply_counts: dict[uuid.UUID, int] = {}
+    if response_ids:
+        rows = (
+            await db.execute(
+                select(Response.parent_id, func.count())
+                .where(Response.parent_id.in_(response_ids))
+                .group_by(Response.parent_id)
+            )
+        ).all()
+        reply_counts = {row[0]: row[1] for row in rows}
+
     authors = await _get_response_authors_map(db, [response.user_id for response in responses])
 
     data: list[ResponseItem] = []
@@ -79,6 +95,8 @@ async def list_responses(
                 date=response.created_at.date(),
                 likes=response.likes,
                 author=_author_payload(author),
+                parent_id=response.parent_id,
+                reply_count=reply_counts.get(response.id, 0),
             )
         )
 
@@ -106,7 +124,94 @@ async def create_response(
         date=response.created_at.date(),
         likes=response.likes,
         author=_author_payload(author),
+        parent_id=None,
+        reply_count=0,
     )
+
+
+async def create_reply(
+    db: AsyncSession,
+    article_id: uuid.UUID,
+    parent_id: uuid.UUID,
+    user_id: uuid.UUID,
+    text: str,
+) -> ResponseItem:
+    article = await _get_article(db, article_id)
+    parent = await db.get(Response, parent_id)
+    if parent is None or parent.article_id != article_id:
+        raise not_found("Parent response not found.")
+    author = await _get_response_author(db, user_id)
+    response = Response(article_id=article_id, user_id=user_id, text=text, parent_id=parent_id)
+    article.response_count += 1
+    db.add(response)
+    await db.commit()
+    await db.refresh(response)
+    return ResponseItem(
+        id=response.id,
+        article_id=response.article_id,
+        article_title=article.title,
+        text=response.text,
+        date=response.created_at.date(),
+        likes=response.likes,
+        author=_author_payload(author),
+        parent_id=response.parent_id,
+        reply_count=0,
+    )
+
+
+async def list_replies(
+    db: AsyncSession,
+    article_id: uuid.UUID,
+    parent_id: uuid.UUID,
+    page: int,
+    limit: int,
+) -> ResponseListResponse:
+    article = await _get_article(db, article_id)
+    parent = await db.get(Response, parent_id)
+    if parent is None or parent.article_id != article_id:
+        raise not_found("Parent response not found.")
+
+    responses, pagination = await paginate_scalars(
+        db,
+        select(Response)
+        .where(Response.parent_id == parent_id)
+        .order_by(Response.created_at.asc()),
+        page,
+        limit,
+    )
+    # Count nested replies for each reply
+    response_ids = [r.id for r in responses]
+    reply_counts: dict[uuid.UUID, int] = {}
+    if response_ids:
+        rows = (
+            await db.execute(
+                select(Response.parent_id, func.count())
+                .where(Response.parent_id.in_(response_ids))
+                .group_by(Response.parent_id)
+            )
+        ).all()
+        reply_counts = {row[0]: row[1] for row in rows}
+
+    authors = await _get_response_authors_map(db, [r.user_id for r in responses])
+    data: list[ResponseItem] = []
+    for response in responses:
+        author = authors.get(response.user_id)
+        if author is None:
+            continue
+        data.append(
+            ResponseItem(
+                id=response.id,
+                article_id=response.article_id,
+                article_title=article.title,
+                text=response.text,
+                date=response.created_at.date(),
+                likes=response.likes,
+                author=_author_payload(author),
+                parent_id=response.parent_id,
+                reply_count=reply_counts.get(response.id, 0),
+            )
+        )
+    return ResponseListResponse(data=data, pagination=pagination)
 
 
 async def update_response(
@@ -126,6 +231,11 @@ async def update_response(
     await db.commit()
     await db.refresh(response)
     author = await _get_response_author(db, response.user_id)
+    reply_count = (
+        await db.scalar(
+            select(func.count()).select_from(Response).where(Response.parent_id == response.id)
+        )
+    ) or 0
     return ResponseItem(
         id=response.id,
         article_id=response.article_id,
@@ -134,7 +244,22 @@ async def update_response(
         date=response.updated_at.date(),
         likes=response.likes,
         author=_author_payload(author),
+        parent_id=response.parent_id,
+        reply_count=reply_count,
     )
+
+
+async def _count_descendants(db: AsyncSession, response_id: uuid.UUID) -> int:
+    """Recursively count all nested replies under a response."""
+    children = (
+        await db.scalars(
+            select(Response).where(Response.parent_id == response_id)
+        )
+    ).all()
+    count = len(children)
+    for child in children:
+        count += await _count_descendants(db, child.id)
+    return count
 
 
 async def delete_response(
@@ -149,7 +274,11 @@ async def delete_response(
         raise not_found("Response not found.")
     if response.user_id != user_id:
         raise forbidden("Only the response owner can delete this response.")
-    article.response_count = max(article.response_count - 1, 0)
+    # Count this response + all nested descendants
+    descendant_count = await _count_descendants(db, response_id)
+    total_deleted = 1 + descendant_count
+    article.response_count = max(article.response_count - total_deleted, 0)
+    # CASCADE FK will remove all children
     await db.delete(response)
     await db.commit()
 

@@ -13,6 +13,7 @@ from app.responses.schemas import (
     InlineResponseItem,
     InlineResponseListResponse,
     InlineResponseUpdateRequest,
+    ReplyCreateRequest,
     ResponseClapResponse,
     ResponseCreateRequest,
     ResponseItem,
@@ -22,10 +23,12 @@ from app.responses.schemas import (
 from app.responses.service import (
     clap_response,
     create_inline_response,
+    create_reply,
     create_response,
     delete_inline_response,
     delete_response,
     list_inline_responses,
+    list_replies,
     list_responses,
     update_inline_response,
     update_response,
@@ -115,6 +118,50 @@ async def clap_article_response_endpoint(
         count=payload.count,
     )
     return ResponseClapResponse(likes=likes)
+
+
+@router.get(
+    "/articles/{article_id}/responses/{response_id}/replies",
+    response_model=ResponseListResponse,
+)
+async def list_response_replies_endpoint(
+    article_id: uuid.UUID,
+    response_id: uuid.UUID,
+    pagination: PaginationParams = Depends(),
+    db: AsyncSession = Depends(get_db),
+) -> ResponseListResponse:
+    return await list_replies(
+        db,
+        article_id=article_id,
+        parent_id=response_id,
+        page=pagination.page,
+        limit=pagination.limit,
+    )
+
+
+@router.post(
+    "/articles/{article_id}/responses/{response_id}/replies/{user_id}",
+    response_model=ResponseItem,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_response_reply_endpoint(
+    article_id: uuid.UUID,
+    response_id: uuid.UUID,
+    user_id: uuid.UUID,
+    payload: ReplyCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ResponseItem:
+    ensure_user_access(current_user, user_id)
+    if payload.user_id != user_id:
+        raise forbidden("Path user does not match body user.")
+    return await create_reply(
+        db,
+        article_id=article_id,
+        parent_id=response_id,
+        user_id=user_id,
+        text=payload.text,
+    )
 
 
 @router.get("/articles/{article_id}/inline-responses", response_model=InlineResponseListResponse)

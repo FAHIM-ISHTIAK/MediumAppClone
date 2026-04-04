@@ -78,6 +78,8 @@ export interface ResponseItem {
   date: string;
   likes: number;
   author: ArticleAuthor;
+  parentId: string | null;
+  replyCount: number;
 }
 
 export interface InlineResponseItem {
@@ -337,6 +339,19 @@ export class ApiClient {
   deleteResponse(articleId: string, userId: string, responseId: string): Promise<void> {
     return this.request('DELETE', `/articles/${articleId}/responses/${userId}/${responseId}`, {
       auth: true,
+    });
+  }
+
+  getReplies(articleId: string, responseId: string, page = 1, limit = 20): Promise<Paginated<ResponseItem>> {
+    return this.request('GET', `/articles/${articleId}/responses/${responseId}/replies`, {
+      params: { page, limit },
+    });
+  }
+
+  createReply(articleId: string, responseId: string, userId: string, text: string): Promise<ResponseItem> {
+    return this.request('POST', `/articles/${articleId}/responses/${responseId}/replies/${userId}`, {
+      auth: true,
+      body: { userId, text },
     });
   }
 

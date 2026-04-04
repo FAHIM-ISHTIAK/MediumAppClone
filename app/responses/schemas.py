@@ -1,5 +1,6 @@
 import uuid
 from datetime import date
+from typing import Optional
 
 from pydantic import Field
 
@@ -16,6 +17,8 @@ class ResponseItem(APIModel):
     date: date
     likes: int
     author: ArticleAuthor
+    parent_id: Optional[uuid.UUID] = None
+    reply_count: int = 0
 
 
 class ResponseListResponse(APIModel):
@@ -38,6 +41,11 @@ class ResponseCreateRequest(APIModel):
 
 
 class ResponseUpdateRequest(APIModel):
+    user_id: uuid.UUID
+    text: str = Field(min_length=1, max_length=5000)
+
+
+class ReplyCreateRequest(APIModel):
     user_id: uuid.UUID
     text: str = Field(min_length=1, max_length=5000)
 
