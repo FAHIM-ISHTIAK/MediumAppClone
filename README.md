@@ -83,6 +83,7 @@ Important notes:
 | `SUPABASE_URL` | Needed for auth | Supabase project URL. |
 | `SUPABASE_JWT_SECRET` | Needed for HS256 auth | Secret used to validate Supabase JWTs. |
 | `FRONTEND_URL` | Recommended | Comma-separated allowed CORS origins. |
+| `FRONTEND_ORIGIN_REGEX` | Optional | Regex-based CORS origin matching (useful for Netlify preview domains). |
 
 ### 4. Run database migrations
 
@@ -257,12 +258,100 @@ docker run --rm -p 8000:8000 --env-file .env medium-clone-api
 
 ## Deployment
 
-`render.yaml` contains a Render service definition for the backend. You still need to provide these environment variables in Render:
+This repo is ready for:
 
-- `DATABASE_URL`
-- `SUPABASE_JWT_SECRET`
-- `SUPABASE_URL`
-- `FRONTEND_URL`
+- Backend on Render (Docker)
+- Frontend on Netlify
+
+### Backend on Render (Docker)
+
+1. Push your latest code to GitHub.
+2. In Render, click **New +** → **Blueprint**.
+3. Connect your repo and deploy using `render.yaml`.
+4. In Render service environment variables, set:
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Supabase Postgres connection string for production DB. |
+| `SUPABASE_JWT_SECRET` | Yes | Supabase JWT secret used by backend token validation. |
+| `SUPABASE_URL` | Yes | Your Supabase project URL. |
+| `FRONTEND_URL` | Yes | Comma-separated allowed frontend origins (include your Netlify production URL). |
+| `FRONTEND_ORIGIN_REGEX` | Optional | Regex for Netlify preview origins if you want preview deploys to call backend. |
+| `DATABASE_CONNECTION_MODE` | Optional | Default `auto`; usually best for Render. |
+| `DATABASE_DIRECT_URL` | Optional | Use if you want to force direct DB connections. |
+
+5. Trigger deploy and confirm service becomes healthy.
+
+#### Run migrations on Render deployment
+
+Before first real traffic (and after each migration change), run:
+
+```bash
+alembic upgrade head
+```
+
+You can run this in a one-off shell against the same environment variables used by Render.
+
+#### Backend URL after deploy
+
+Render gives you a URL like:
+
+```text
+https://your-service-name.onrender.com
+```
+
+Use this URL as frontend `VITE_API_URL`.
+
+### Frontend on Netlify
+
+1. In Netlify, click **Add new site** → **Import an existing project**.
+2. Connect the same GitHub repo.
+3. Set these build settings:
+	- Base directory: `Frontend`
+	- Build command: `npm run build`
+	- Publish directory: `dist`
+4. Set Netlify environment variables:
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `VITE_API_URL` | Yes | Your Render backend URL (e.g. `https://your-service-name.onrender.com`). |
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL. |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon/public API key. |
+
+5. Deploy the site.
+
+`Frontend/netlify.toml` is included and configures:
+
+- `npm run build` as build command
+- `dist` as publish folder
+- SPA redirect (`/*` → `/index.html`) so route refreshes do not 404
+
+### CORS setup for Netlify production + previews
+
+Set backend `FRONTEND_URL` to include production frontend origin, for example:
+
+```env
+FRONTEND_URL=https://your-site-name.netlify.app
+```
+
+If you also want preview deploy domains, set:
+
+```env
+FRONTEND_ORIGIN_REGEX=^https:\/\/(.*--)?your-site-name\.netlify\.app$
+```
+
+This pattern allows both:
+
+- `https://your-site-name.netlify.app`
+- `https://deploy-preview-123--your-site-name.netlify.app`
+
+### Deployment order (recommended)
+
+1. Deploy backend to Render.
+2. Run `alembic upgrade head` against production DB.
+3. Verify backend health and API endpoints.
+4. Deploy frontend to Netlify with `VITE_API_URL` pointing to Render.
+5. Verify login flow, CORS, and deep-link refresh behavior.
 
 ## Common issues
 
@@ -281,6 +370,12 @@ Set `FRONTEND_URL` in the backend `.env` to include your frontend origin, for ex
 
 ```env
 FRONTEND_URL=http://localhost:5173,http://localhost:3000
+```
+
+For dynamic preview domains (for example Netlify deploy previews), also set:
+
+```env
+FRONTEND_ORIGIN_REGEX=^https:\/\/(.*--)?your-site-name\.netlify\.app$
 ```
 
 ### Database connection problems with Supabase

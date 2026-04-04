@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = Field(default="dev-secret", alias="SUPABASE_JWT_SECRET")
     supabase_url: str = Field(default="", alias="SUPABASE_URL")
     frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
+    frontend_origin_regex: str | None = Field(default=None, alias="FRONTEND_ORIGIN_REGEX")
     database_direct_url: str | None = Field(default=None, alias="DATABASE_DIRECT_URL")
     database_connection_mode: Literal["auto", "direct", "session", "transaction"] = Field(
         default="auto",
