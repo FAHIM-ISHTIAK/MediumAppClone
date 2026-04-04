@@ -11,6 +11,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { ApiClient, UserInfo } from "../lib/api";
+import { queryCache } from "../lib/queryCache";
 
 interface AppContextType {
   /** The logged-in user profile (from local DB via /auth/me). null while loading or when not authed. */
@@ -119,6 +120,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT") {
         setUser(null);
         setLoading(false);
+        // Clear all cached responses so a new user starts with a fresh slate
+        queryCache.clear();
         return;
       }
 

@@ -9,6 +9,7 @@ from app.articles.schemas import Article as ArticleSchema
 from app.articles.schemas import ArticleAuthor, ArticleListResponse, ArticleSummary
 from app.articles.schemas import ClapArticleResponse, SaveArticleResponse
 from app.auth.models import User
+from app.common.cache import cache_store
 from app.common.exceptions import bad_request, forbidden, not_found
 from app.common.pagination import PaginationMeta, paginate_scalars
 from app.library.models import ReadingHistory, SavedArticle
@@ -151,6 +152,11 @@ async def list_articles(
     page: int,
     limit: int,
 ) -> ArticleListResponse:
+    cache_key = f"articles:list:{tag or ''}:{sort}:{page}:{limit}"
+    cached = cache_store.get(cache_key)
+    if cached is not None:
+        return cached
+
     dialect_name = db.get_bind().dialect.name
     stmt = select(Article)
     if tag:
@@ -173,7 +179,9 @@ async def list_articles(
         )
 
     summaries = await build_article_summaries(db, articles)
-    return ArticleListResponse(data=summaries, pagination=pagination)
+    result = ArticleListResponse(data=summaries, pagination=pagination)
+    cache_store.set(cache_key, result, ttl=30)
+    return result
 
 
 async def _upsert_reading_history(
@@ -254,6 +262,8 @@ async def clap_article(
     article.clap_count += delta
     await db.commit()
     await db.refresh(article)
+    # Invalidate list pages so clap count update shows on feed
+    cache_store.delete_prefix("articles:list:")
     return ClapArticleResponse(total_claps=article.clap_count)
 
 
