@@ -22,8 +22,8 @@ from app.library.schemas import (
     ReadingHistoryListResponse,
     ReadingStreak,
 )
-from app.responses.models import Response
-from app.responses.schemas import ResponseItem, ResponseListResponse
+from app.responses.models import InlineResponse, Response
+from app.responses.schemas import InlineResponseItem, InlineResponseListResponse, ResponseItem, ResponseListResponse
 
 
 async def _get_user_or_404(db: AsyncSession, user_id: uuid.UUID) -> User:
@@ -242,6 +242,37 @@ async def delete_library_response(
         article.response_count = max(article.response_count - 1, 0)
     await db.delete(response)
     await db.commit()
+
+
+async def list_user_inline_responses(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    page: int,
+    limit: int,
+) -> InlineResponseListResponse:
+    await _get_user_or_404(db, user_id)
+    responses, pagination = await paginate_scalars(
+        db,
+        select(InlineResponse)
+        .where(InlineResponse.user_id == user_id)
+        .order_by(InlineResponse.created_at.desc()),
+        page,
+        limit,
+    )
+    data = [
+        InlineResponseItem(
+            id=response.id,
+            article_id=response.article_id,
+            user_id=response.user_id,
+            selected_text=response.selected_text,
+            paragraph_index=response.paragraph_index,
+            text=response.text,
+            date=response.created_at.date(),
+            likes=response.likes,
+        )
+        for response in responses
+    ]
+    return InlineResponseListResponse(data=data, pagination=pagination)
 
 
 def _compute_streaks(days: list) -> ReadingStreak:

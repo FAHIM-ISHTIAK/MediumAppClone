@@ -17,10 +17,11 @@ from app.library.service import (
     list_library_highlights,
     list_reading_history,
     list_saved_articles,
+    list_user_inline_responses,
     list_user_responses,
     unsave_article,
 )
-from app.responses.schemas import ResponseListResponse
+from app.responses.schemas import InlineResponseListResponse, ResponseListResponse
 
 
 router = APIRouter(tags=["Library"])
@@ -142,3 +143,15 @@ async def get_reading_analytics_endpoint(
 ) -> ReadingAnalyticsResponse:
     ensure_user_access(current_user, user_id)
     return await get_reading_analytics(db, user_id=user_id)
+
+
+@router.get("/users/{user_id}/library/inline-responses", response_model=InlineResponseListResponse)
+async def list_user_inline_responses_endpoint(
+    user_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> InlineResponseListResponse:
+    ensure_user_access(current_user, user_id)
+    return await list_user_inline_responses(db, user_id=user_id, page=page, limit=limit)
