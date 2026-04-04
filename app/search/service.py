@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.articles.models import Article
@@ -21,7 +21,7 @@ async def search(db: AsyncSession, q: str, type_: str | None, page: int, limit: 
     if type_ in (None, "stories"):
         article_stmt = (
             select(Article)
-            .where(or_(Article.title.ilike(pattern), Article.subtitle.ilike(pattern)))
+            .where(Article.title.ilike(pattern))
             .order_by(Article.created_at.desc())
         )
         article_total = await db.scalar(select(func.count()).select_from(article_stmt.subquery())) or 0
@@ -32,7 +32,14 @@ async def search(db: AsyncSession, q: str, type_: str | None, page: int, limit: 
         response.pagination.total_items = max(response.pagination.total_items, article_total)
 
     if type_ in (None, "people"):
-        people_stmt = select(User).where(User.name.ilike(pattern)).order_by(User.name.asc())
+        people_stmt = (
+            select(User)
+            .where(
+                User.name.ilike(pattern),
+                exists(select(1).where(Article.author_id == User.id)),
+            )
+            .order_by(User.name.asc())
+        )
         people_total = await db.scalar(select(func.count()).select_from(people_stmt.subquery())) or 0
         people = (await db.scalars(people_stmt.offset((page - 1) * limit).limit(limit))).all()
         counts = await _author_counts(db, [person.id for person in people])

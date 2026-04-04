@@ -70,6 +70,15 @@ export interface AuthorProfile {
   isFollowing: boolean;
 }
 
+export interface PublicationProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar: string | null;
+  followers: number;
+  articlesCount: number;
+}
+
 export interface ResponseItem {
   id: string;
   articleId: string;
